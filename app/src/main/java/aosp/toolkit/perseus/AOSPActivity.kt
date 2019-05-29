@@ -19,9 +19,11 @@ import aosp.toolkit.perseus.base.ViewPagerAdapter
 import kotlinx.android.synthetic.main.activity_aosp.*
 import kotlinx.android.synthetic.main.activity_aospselectrom.*
 import kotlinx.android.synthetic.main.fragment_lineageos.*
+import kotlinx.android.synthetic.main.fragment_omni.*
 import kotlinx.android.synthetic.main.view_losbrand.view.*
 import kotlinx.android.synthetic.main.item_losdevice.view.*
 import kotlinx.android.synthetic.main.view_devicedownload.view.*
+import kotlinx.android.synthetic.main.view_omnidevice.view.*
 
 import org.jsoup.Jsoup
 
@@ -42,16 +44,17 @@ class AOSPActivity : AppCompatActivity() {
         supportActionBar!!.setDisplayHomeAsUpEnabled(true)
         toolbar.setNavigationOnClickListener { finish() }
 
-        val tabList = listOf("LineageOS")
-        val fragmentList = listOf(LineageOSFragment())
+        val tabList = listOf("LineageOS", "OMNIRom")
+        val fragmentList = listOf(LineageOSFragment(), OMNIFragment())
         viewPager.adapter = ViewPagerAdapter(supportFragmentManager, fragmentList, tabList)
         tabLayout.setupWithViewPager(viewPager)
     }
 
     class AOSPSelectRomActivity : AppCompatActivity() {
-
         companion object {
-            val head = mapOf("los" to "https://download.lineageos.org")
+            val head = mapOf(
+                "LOS" to "https://download.lineageos.org", "OMNI" to "http://dl.omnirom.org"
+            )
         }
 
         override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,32 +71,65 @@ class AOSPActivity : AppCompatActivity() {
             toolbarAOSPSelection.setNavigationOnClickListener { finish() }
 
             Thread {
-                val href = intent.getStringExtra("href")
-                val rom = intent.getStringExtra("rom")
+                when (intent.getStringExtra("rom")) {
+                    "LOS" -> lineageos()
+                    "OMNI" -> omni()
+                }
+            }.start()
+        }
 
-                val document =
-                    Jsoup.connect(head[rom] + href).get().getElementsByTag("tbody")[0].getElementsByTag(
-                        "tr"
-                    )
+        private fun lineageos() {
+            val href = intent.getStringExtra("href")
 
-                for (i in document) {
-                    val td = i.getElementsByTag("td")
+            val document =
+                Jsoup.connect(head["LOS"] + href).get().getElementsByTag("tbody")[0].getElementsByTag(
+                    "tr"
+                )
 
-                    val buildType = td[0].select("td").text()   // Build Type
-                    val version = td[1].select("td").text()     // Version
-                    val a = td[2].select("td").select("a")[0]
-                    val fileName = a.text()                             // File Name
-                    val url = a.attr("href")                  // URL
-                    val size = td[3].select("td").text()        // Size
-                    val date = td[4].select("td").text()        // Date
+            for (i in document) {
+                val td = i.getElementsByTag("td")
 
-                    val deviceDownloadView =
-                        DeviceDownloadView(this, url, fileName, date, buildType, size, version)
-                    runOnUiThread { aospSelectROMContainer.addView(deviceDownloadView) }
+                val buildType = td[0].select("td").text()   // Build Type
+                val version = td[1].select("td").text()     // Version
+                val a = td[2].select("td").select("a")[0]
+                val fileName = a.text()                             // File Name
+                val url = a.attr("href")                  // URL
+                val size = td[3].select("td").text()        // Size
+                val date = td[4].select("td").text()        // Date
 
+                val deviceDownloadView =
+                    DeviceDownloadView(this, url, fileName, date, buildType, version, size)
+                runOnUiThread {
+                    try {
+                        aospSelectROMContainer.addView(deviceDownloadView)
+                    } catch (e: Exception) {
+                        ShortToast(this, e, false)
+                    }
                 }
 
-            }.start()
+            }
+        }
+
+        private fun omni() {
+            val href = intent.getStringExtra("href")
+
+            for (i in Jsoup.connect(head["OMNI"] + href).get().getElementsByTag("tr")) {
+                if (i.getElementsByClass("fb-i").text().isEmpty() || i.getElementsByClass("fb-n").select(
+                        "a"
+                    ).attr("href") == ".."
+                ) {
+                    continue
+                }
+                val fbn = i.getElementsByClass("fb-n").select("a")
+                val fileName = fbn.text()
+                val url = fbn.attr("href")
+                val date = i.getElementsByClass("fb-d").select("td").text()
+                val size = i.getElementsByClass("fb-s").select("td").text()
+
+                val deviceDownloadView = DeviceDownloadView(this, head["OMNI"] + url, fileName, date, "", "", size)
+                runOnUiThread { omniRoot.addView(deviceDownloadView) }
+
+            }
 
         }
 
@@ -104,15 +140,24 @@ class AOSPActivity : AppCompatActivity() {
             fileName: String,
             date: String,
             type: String,
-            size: String,
-            version: String
+            version: String,
+            size: String
         ) : LinearLayout(context) {
             init {
                 LayoutInflater.from(context).inflate(R.layout.view_devicedownload, this)
                 romFile.text = fileName
                 romSize.text = size
                 romDate.text = date
-                romVersion.text = "$version-$type"
+                romVersion.text = if (type.isNotEmpty()) {
+                    if (version.isNotEmpty()) {
+                        "$version-$type"
+                    } else {
+                        type
+                    }
+                } else {
+                    romVersion.visibility = View.GONE
+                    ""
+                }
                 romDownload.setOnClickListener {
                     Thread {
                         val path = context.externalCacheDir!!.absolutePath
@@ -147,9 +192,10 @@ class AOSPActivity : AppCompatActivity() {
             if (isVisibleToUser && !created) {
                 Thread {
                     try {
-                        val document = Jsoup.connect("https://download.lineageos.org/").get()
 
-                        for (i in document.getElementsByClass("no-padding")) {
+                        for (i in Jsoup.connect("https://download.lineageos.org/").get().getElementsByClass(
+                            "no-padding"
+                        )) {
                             // Brand
                             val brand =
                                 i.getElementsByClass("collapsible-header waves-effect waves-teal bold")
@@ -166,16 +212,18 @@ class AOSPActivity : AppCompatActivity() {
 
                                 losBrandView.addView(
                                     LOSDeviceItem(
-                                        context!!,
-                                        brand,
-                                        model,
-                                        device,
-                                        href
+                                        context!!, brand, model, device, href
                                     )
                                 )
                             }
 
-                            activity!!.runOnUiThread { losRoot.addView(losBrandView) }
+                            activity!!.runOnUiThread {
+                                try {
+                                    losRoot.addView(losBrandView)
+                                } catch (e: Exception) {
+                                    ShortToast(activity!!, e)
+                                }
+                            }
                         }
                     } catch (e: Exception) {
                         ShortToast(activity!!, e, false)
@@ -185,44 +233,100 @@ class AOSPActivity : AppCompatActivity() {
             }
         }
 
-    }
-
-    @SuppressLint("ViewConstructor")
-    class LOSBrandView(context: Context, brand: String) : LinearLayout(context) {
-        init {
-            LayoutInflater.from(context).inflate(R.layout.view_losbrand, this)
-            losViewTitle.text = brand
-            losViewRoot.setOnClickListener {
-                losViewContainer.visibility = if (losViewContainer.visibility == View.VISIBLE) {
-                    View.GONE
-                } else {
-                    View.VISIBLE
+        @SuppressLint("ViewConstructor")
+        private class LOSBrandView(context: Context, brand: String) : LinearLayout(context) {
+            init {
+                LayoutInflater.from(context).inflate(R.layout.view_losbrand, this)
+                losViewTitle.text = brand
+                losViewRoot.setOnClickListener {
+                    losViewContainer.visibility = if (losViewContainer.visibility == View.VISIBLE) {
+                        View.GONE
+                    } else {
+                        View.VISIBLE
+                    }
                 }
+            }
+
+            override fun addView(view: View) {
+                losViewContainer.addView(view)
             }
         }
 
-        override fun addView(view: View) {
-            losViewContainer.addView(view)
+        @SuppressLint("ViewConstructor")
+        private class LOSDeviceItem(
+            context: Context, brand: String, model: String, device: String, href: String
+        ) : LinearLayout(context) {
+            init {
+                LayoutInflater.from(context).inflate(R.layout.item_losdevice, this)
+                losModel.text = model
+                losdevice.text = device
+                losDeviceRoot.setOnClickListener {
+                    val intent = Intent().setClass(context, AOSPSelectRomActivity::class.java)
+                        .putExtra("rom", "LOS").putExtra("href", href).putExtra("device", device)
+                        .putExtra("model", model).putExtra("brand", brand)
+                    context.startActivity(intent)
+                }
+            }
         }
     }
 
-    @SuppressLint("ViewConstructor")
-    class LOSDeviceItem(
-        context: Context,
-        brand: String,
-        model: String,
-        device: String,
-        href: String
-    ) : LinearLayout(context) {
-        init {
-            LayoutInflater.from(context).inflate(R.layout.item_losdevice, this)
-            losModel.text = model
-            losdevice.text = device
-            losDeviceRoot.setOnClickListener {
-                val intent = Intent().setClass(context, AOSPSelectRomActivity::class.java)
-                    .putExtra("rom", "los").putExtra("href", href).putExtra("device", device)
-                    .putExtra("model", model).putExtra("brand", brand)
-                context.startActivity(intent)
+    class OMNIFragment : Fragment() {
+        override fun onCreateView(
+            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+        ): View? {
+            return inflater.inflate(R.layout.fragment_omni, container, false)
+        }
+
+        override fun setUserVisibleHint(isVisibleToUser: Boolean) {
+            super.setUserVisibleHint(isVisibleToUser)
+            Thread {
+                try {
+                    for (i in Jsoup.connect("http://dl.omnirom.org/").get().getElementsByTag("tr")) {
+                        if (i.getElementsByClass("fb-i").select("img").attr("href").isEmpty() || i.getElementsByClass(
+                                "fb-i"
+                            ).select("img").attr("href") == null || i.getElementsByClass("fb-s").select(
+                                "img"
+                            ).attr("href").isNotEmpty() || i.getElementsByClass("fb-s").select("img").attr(
+                                "href"
+                            ) != null
+                        ) {
+                            continue
+                        }
+                        val fbn = i.getElementsByClass("fb-n").select("a")
+                        val device = fbn.attr("href")              // Device
+                        val href = fbn.text()                                // Href
+                        val date = i.getElementsByClass("fb-d").select("td").text()     // Date
+                        val omniDeviceView = OMNIDeviceView(context!!, device, href, date)
+                        activity!!.runOnUiThread {
+                            try {
+                                omniRoot.addView(omniDeviceView)
+                            } catch (e: Exception) {
+                                ShortToast(activity!!, e, false)
+                            }
+                        }
+                    }
+
+                } catch (e: Exception) {
+                    ShortToast(activity!!, e, false)
+                }
+            }.start()
+        }
+
+        @SuppressLint("ViewConstructor")
+        class OMNIDeviceView(context: Context, device: String, href: String, date: String) :
+            LinearLayout(context) {
+            init {
+                LayoutInflater.from(context).inflate(R.layout.view_omnidevice, this)
+                omniDevice.text = device
+                omniLastUpdate.text = date
+                omniViewRoot.setOnClickListener {
+                    Thread {
+                        val intent = Intent().setClass(context, AOSPSelectRomActivity::class.java)
+                            .putExtra("rom", "OMNI").putExtra("href", href).putExtra("brand", "")
+                            .putExtra("model", "").putExtra("device", device)
+                        context.startActivity(intent)
+                    }.start()
+                }
             }
         }
     }
