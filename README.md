@@ -18,6 +18,10 @@
 ### 感谢 / Credit
 - LibXZR(xzr467706992)  : [Lanthanum-system-toolbox moledules](https://github.com/Lanthanum-system-toolbox-v2/Modules)
 - Matt Yang(yc9559)     : [cpufreq-interactive-opt](https://github.com/yc9559/cpufreq-interactive-opt)
+- Shelling Ford(cjybyjk): [powercfg_generator](https://github.com/cjybyjk/powercfg_generator)
 - John Wu(topjohnwu)    : [libsu](https://github.com/topjohnwu/libsu)
 - Shelling Ford(cjybyjk): [powercfg_generator](https://github.com/cjybyjk/powercfg_generator)
 - ZXing Project         : [zxing](https://github.com/zxing/zxing)
+- Square                : [okhttp](https://github.com/square/okhttp)
+- Jonathan Hedley(jhy)  : [jsoup](https://github.com/jhy/jsoup)
+- Google                : [com.android.support](https://developer.android.com/)
