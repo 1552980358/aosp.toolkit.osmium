@@ -15,11 +15,10 @@ import android.widget.TextView
 import aosp.toolkit.perseus.R
 
 /*
- * OsToolkit - Kotlin
- *
- * Date : 31 Mar 2019
- *
- * By   : 1552980358
+ * @File:   LicenceDialogFragment
+ * @Author: 1552980358
+ * @Time:
+ * @Date:   31 Mar 2019
  *
  */
 

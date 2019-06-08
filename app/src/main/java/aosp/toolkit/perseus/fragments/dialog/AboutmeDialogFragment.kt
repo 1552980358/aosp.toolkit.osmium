@@ -15,13 +15,11 @@ import android.graphics.Paint
 import android.net.Uri
 import aosp.toolkit.perseus.base.BaseIndex.QQGroupKey
 
-
 /*
- * OsToolkit - Kotlin
- *
- * Date : 2 Apr 2019
- *
- * By   : 1552980358
+ * @File:   AboutmeDialogFragment
+ * @Author: 1552980358
+ * @Time:
+ * @Date:   2 Apr 2019
  *
  */
  

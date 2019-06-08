@@ -68,17 +68,10 @@ public class BaseManager extends Application  {
     }
 
     private MainActivity mainActivity;
-    private MainFragment mainFragment;
-    public void setMainActivity(MainActivity mainActivity, MainFragment mainFragment) {
+    public void setMainActivity(MainActivity mainActivity) {
         this.mainActivity = mainActivity;
-        this.mainFragment = mainFragment;
     }
     public MainActivity getMainActivity() {
         return this.mainActivity;
-    }
-
-    public void exceptionBreaker(Fragment fragment) {
-        mainActivity.getSupportFragmentManager().beginTransaction().remove(fragment).show(mainFragment).commit();
-        mainActivity.exceptionBeaker();
     }
 }

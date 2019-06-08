@@ -13,6 +13,7 @@ package aosp.toolkit.perseus
  * Modify
  *
  * 23/1/2019
+ * 8/7/2019
  *
  */
 
@@ -45,13 +46,13 @@ import com.topjohnwu.superuser.Shell
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.app_bar_main.*
 
-class MainActivity : AppCompatActivity(),
-    NavigationView.OnNavigationItemSelectedListener,
+class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener,
     View.OnClickListener, UpdateService.UpdateServiceListener {
 
+    /*
     // 定义fragments
     private var mainFragment: MainFragment = MainFragment()
-    //private var aboutFragment: Fragment? = null
+    private var aboutFragment: Fragment? = null
     private lateinit var deviceInfoFragment: Fragment
     private lateinit var chargingFragment: Fragment
     private lateinit var coreFragment: Fragment
@@ -59,16 +60,32 @@ class MainActivity : AppCompatActivity(),
     private lateinit var applyPixelCatFragment: Fragment
     private lateinit var romIOFragment: Fragment
     private lateinit var otherFragment: Fragment
+    */
+
+    private val fragmentMap = mutableMapOf<String, Fragment>(FragmentTable[0] to MainFragment())
+
+    companion object {
+        val FragmentTable = arrayOf(
+            "MainFragment",
+            "ApplyPixelCatFragment",
+            "ApplyYCFragment",
+            "ChargingFragment",
+            "CoreFragment",
+            "DeviceFragment",
+            "OtherFragment",
+            "RomIOFragment"
+        )
+    }
 
     // 显示的fragment
-    private var currentFragment: Fragment = mainFragment
+    private var currentFragment = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Thread {
             // 移除上一个activity
             BaseManager.getInstance().finishActivities()
-            BaseManager.instance.setMainActivity(this, mainFragment)
+            BaseManager.instance.mainActivity = this
         }.start()
 
         checkUpdate()
@@ -80,8 +97,7 @@ class MainActivity : AppCompatActivity(),
                 ) != getPackageVersion(this)
             ) {
                 AboutmeDialogFragment().show(
-                    supportFragmentManager,
-                    "AboutmeDialogFragment().launch"
+                    supportFragmentManager, "AboutmeDialogFragment().launch"
                 )
                 getSharedPreferences("launch", Context.MODE_PRIVATE).edit()
                     .putString("aboutAuthor", getPackageVersion(this)).apply()
@@ -89,12 +105,9 @@ class MainActivity : AppCompatActivity(),
         }.start()
 
         initUI()
-        addFragment()
-        Thread {
-            runOnUiThread {
-                drawer_layout.openDrawer(GravityCompat.START)
-            }
-        }.start()
+        supportFragmentManager.beginTransaction()
+            .add(R.id.frameLayout_main, fragmentMap[FragmentTable[0]]!!).commit()
+        drawer_layout.openDrawer(GravityCompat.START)
     }
 
     private fun initUI() {
@@ -125,15 +138,6 @@ class MainActivity : AppCompatActivity(),
 
     fun checkUpdate() {
         startService(Intent(applicationContext, UpdateService::class.java))
-    }
-
-    fun exceptionBeaker() {
-        this.currentFragment = mainFragment
-    }
-
-    private fun addFragment() {
-        supportFragmentManager.beginTransaction().add(R.id.frameLayout_main, mainFragment).commit()
-        currentFragment = mainFragment
     }
 
     override fun onBackPressed() {
@@ -223,14 +227,11 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onUpdate(
-        version: String,
-        url: String,
-        date: String,
-        changelogZh: String,
-        changelogEn: String
+        version: String, url: String, date: String, changelogZh: String, changelogEn: String
     ) {
         super.onUpdate(version, url, date, changelogZh, changelogEn)
-        UpdateDialogFragment().setData(version, url, date, changelogZh, changelogEn).show(supportFragmentManager, "UpdateDialogFragment()")
+        UpdateDialogFragment().setData(version, url, date, changelogZh, changelogEn)
+            .show(supportFragmentManager, "UpdateDialogFragment()")
     }
 
     override fun onNewest(version: String, code: String) {
@@ -245,7 +246,10 @@ class MainActivity : AppCompatActivity(),
                 drawer_layout.openDrawer(GravityCompat.END)
             }
             R.id.nav_aboutme -> {
-                @Suppress("SpellCheckingInspection") AboutmeDialogFragment().show(supportFragmentManager, "AboutmeDialogFragment()")
+                @Suppress("SpellCheckingInspection") AboutmeDialogFragment().show(
+                    supportFragmentManager,
+                    "AboutmeDialogFragment()"
+                )
             }
         }
     }
@@ -253,10 +257,75 @@ class MainActivity : AppCompatActivity(),
     private fun exchangeFragment(id: Int) {
         drawer_layout.closeDrawer(GravityCompat.START)
         Thread {
-            val frag: Fragment
+            val frag: Int
+            var newObject = false
             val fragmentTransaction = supportFragmentManager.beginTransaction()
             val title: Int
+
             when (id) {
+                R.id.nav_applypc -> {
+                    title = R.string.nav_pc
+                    if (fragmentMap[FragmentTable[1]] == null) {
+                        newObject = true
+                        fragmentMap[FragmentTable[1]] = ApplyYCFragment()
+                    }
+                    frag = 1
+                }
+                R.id.nav_applyyc -> {
+                    title = R.string.nav_yc
+                    if (fragmentMap[FragmentTable[2]] == null) {
+                        newObject = true
+                        fragmentMap[FragmentTable[2]] = ApplyYCFragment()
+                    }
+                    frag = 2
+                }
+                R.id.nav_charging -> {
+                    title = R.string.nav_charging
+                    if (fragmentMap[FragmentTable[3]] == null) {
+                        newObject = true
+                        fragmentMap[FragmentTable[3]] = ChargingFragment()
+                    }
+                    frag = 3
+                }
+                R.id.nav_cores -> {
+                    title = R.string.nav_processor
+                    if (fragmentMap[FragmentTable[4]] == null) {
+                        newObject = true
+                        fragmentMap[FragmentTable[4]] = CoreFragment()
+                    }
+                    frag = 4
+                }
+                R.id.nav_deviceinfo -> {
+                    title = R.string.nav_deviceinfo
+                    if (fragmentMap[FragmentTable[5]] == null) {
+                        newObject = true
+                        fragmentMap[FragmentTable[5]] = DeviceInfoFragment()
+                    }
+                    frag = 5
+                }
+                R.id.nav_others -> {
+                    title = R.string.nav_other
+                    if (fragmentMap[FragmentTable[6]] == null) {
+                        newObject = true
+                        fragmentMap[FragmentTable[6]] = OtherFragment()
+                    }
+                    frag = 6
+                }
+                R.id.nav_romio -> {
+                    title = R.string.nav_romio
+                    if (fragmentMap[FragmentTable[7]] == null) {
+                        newObject = true
+                        fragmentMap[FragmentTable[7]] = RomIOFragment()
+                    }
+                    frag = 7
+                }
+                else -> {
+                    title = R.string.nav_main
+                    frag = 0
+                }
+            }
+
+            /*when (id) {
                 R.id.nav_charging -> {
                     title = R.string.nav_charging
                     if (::chargingFragment.isInitialized) {
@@ -332,15 +401,29 @@ class MainActivity : AppCompatActivity(),
                     fragmentTransaction.show(mainFragment)
                     title = R.string.nav_main
                 }
-            }
+            }*/
+            /*
+                        runOnUiThread { toolbar.setTitle(title) }
+                        if ( != currentFragment) {
+                            fragmentTransaction.hide(currentFragment).commit()
+                        }
+                        currentFragment = frag
+                        */
 
-            runOnUiThread { toolbar.setTitle(title) }
             if (frag != currentFragment) {
-                fragmentTransaction.hide(currentFragment).commit()
+                runOnUiThread { toolbar.setTitle(title) }
+                if (!newObject) {
+                    fragmentTransaction.show(fragmentMap[FragmentTable[frag]]!!)
+                } else {
+                    fragmentTransaction.add(
+                        R.id.frameLayout_main,
+                        fragmentMap[FragmentTable[frag]]!!
+                    )
+                }
+                fragmentTransaction.hide(fragmentMap[FragmentTable[currentFragment]]!!).commit()
+                currentFragment = frag
             }
-            currentFragment = frag
+
         }.start()
-
     }
-
 }
